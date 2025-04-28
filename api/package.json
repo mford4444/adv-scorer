@@ -1,0 +1,9 @@
+{
+  "name": "adv-scorer",
+  "version": "1.0.0",
+  "dependencies": {
+    "node-fetch": "2.x",
+    "pdf-parse": "^1.1.1",
+    "openai": "^4.0.0"
+  }
+}
