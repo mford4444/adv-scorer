@@ -55,13 +55,33 @@ Instructions:
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: 'You are an expert scoring engine.' },
-      { role: 'user',   content: prompt + '\n\nADV Part 1:\n' + advText + '\n\nADV Part 2:\n' + part2Text }
+      {
+        role: 'user',
+        content:
+          prompt +
+          '\n\nADV Part 1:\n' +
+          advText +
+          '\n\nADV Part 2:\n' +
+          part2Text
+      }
     ],
     temperature: 0
   });
 
-  const aiResponse = chat.data.choices[0].message.content;
+  // Grab the raw string and log it
+  const aiRaw = chat.data.choices[0].message.content;
+  console.log('GPT raw response:', aiRaw);
 
-  // Return the raw JSON so your Airtable script can parse & patch the fields
-  return res.status(200).json({ recordId, scores: JSON.parse(aiResponse) });
-}
+  // Try to parse it as JSON
+  let scores;
+  try {
+    scores = JSON.parse(aiRaw);
+  } catch (e) {
+    console.error('JSON parse error:', e);
+    return res
+      .status(500)
+      .json({ error: 'Invalid JSON from GPT', raw: aiRaw });
+  }
+
+  // Return both raw + parsed for Airtable to inspect
+  return res.status(200).json({ recordId, raw: aiRaw, scores });
