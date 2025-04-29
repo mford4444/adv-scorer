@@ -1,28 +1,24 @@
-// api/score-adv.js
-
-// 1) Switch imports to require()
-const fetch    = require('node-fetch');
+const fetch = require('node-fetch');
 const pdfParse = require('pdf-parse');
 const { Configuration, OpenAIApi } = require('openai');
 
-// 2) Initialize OpenAI
 const openai = new OpenAIApi(new Configuration({
   apiKey: process.env.OPENAI_API_KEY
 }));
 
-// 3) Export your handler via module.exports
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
+
   const { recordId, adv1Url, adv2Url } = req.body;
   if (!recordId || !adv1Url || !adv2Url) {
     res.status(400).json({ error: 'Missing fields' });
     return;
   }
 
-  // Helper to fetch PDF text
+  // Download and parse PDFs
   async function fetchPdfText(url) {
     const arrayBuffer = await fetch(url).then(r => r.arrayBuffer());
     return (await pdfParse(Buffer.from(arrayBuffer))).text;
@@ -30,7 +26,7 @@ module.exports = async (req, res) => {
 
   let advText, part2Text;
   try {
-    advText   = await fetchPdfText(adv1Url);
+    advText = await fetchPdfText(adv1Url);
     part2Text = await fetchPdfText(adv2Url);
   } catch (err) {
     console.error('PDF fetch/parse error:', err);
@@ -38,7 +34,6 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Your existing prompt
   const prompt = `You are an expert scoring engine for RIA Form ADV submissions. You will receive:
 
 • “adv1Text”: the full text of Form ADV Part 1  
@@ -64,28 +59,24 @@ Instructions:
 - **Do NOT** wrap the JSON in any extra text—respond with the JSON object only.
 `;
 
-  // Call GPT
   const chat = await openai.createChatCompletion({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: 'You are an expert scoring engine.' },
-      { role: 'user',
+      {
+        role: 'user',
         content:
           prompt +
-          '\n\nADV Part 1:\n' +
-          advText +
-          '\n\nADV Part 2:\n' +
-          part2Text
+          '\n\nADV Part 1:\n' + advText +
+          '\n\nADV Part 2:\n' + part2Text
       }
     ],
     temperature: 0
   });
 
-  // Debug: grab raw response
   const aiRaw = chat.data.choices[0].message.content;
   console.log('GPT raw response:', aiRaw);
 
-  // Try parse
   let scores;
   try {
     scores = JSON.parse(aiRaw);
@@ -94,10 +85,6 @@ Instructions:
     res.status(500).json({ error: 'Invalid JSON from GPT', raw: aiRaw });
     return;
   }
- // …after you parse `scores`…
-await table.updateRecordAsync(recordId, {
-  "Raw GPT Response": aiRaw,
-  
-  // Return both raw + parsed
+
   res.status(200).json({ recordId, raw: aiRaw, scores });
 };
