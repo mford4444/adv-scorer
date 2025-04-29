@@ -1,18 +1,25 @@
-import fetch from 'node-fetch';
-import pdfParse from 'pdf-parse';
-import { Configuration, OpenAIApi } from 'openai';
+// api/score-adv.js
 
+// 1) Switch imports to require()
+const fetch    = require('node-fetch');
+const pdfParse = require('pdf-parse');
+const { Configuration, OpenAIApi } = require('openai');
+
+// 2) Initialize OpenAI
 const openai = new OpenAIApi(new Configuration({
   apiKey: process.env.OPENAI_API_KEY
 }));
 
-export default async function handler(req, res) {
+// 3) Export your handler via module.exports
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
   const { recordId, adv1Url, adv2Url } = req.body;
   if (!recordId || !adv1Url || !adv2Url) {
-    return res.status(400).json({ error: 'Missing fields' });
+    res.status(400).json({ error: 'Missing fields' });
+    return;
   }
 
   // Helper to fetch PDF text
@@ -21,10 +28,17 @@ export default async function handler(req, res) {
     return (await pdfParse(Buffer.from(arrayBuffer))).text;
   }
 
-  const advText   = await fetchPdfText(adv1Url);
-  const part2Text = await fetchPdfText(adv2Url);
+  let advText, part2Text;
+  try {
+    advText   = await fetchPdfText(adv1Url);
+    part2Text = await fetchPdfText(adv2Url);
+  } catch (err) {
+    console.error('PDF fetch/parse error:', err);
+    res.status(500).json({ error: 'Error fetching or parsing PDF' });
+    return;
+  }
 
-  // **Your scoring prompt**
+  // Your existing prompt
   const prompt = `You are an expert scoring engine for RIA Form ADV submissions. You will receive:
 
 • “adv1Text”: the full text of Form ADV Part 1  
@@ -50,13 +64,12 @@ Instructions:
 - **Do NOT** wrap the JSON in any extra text—respond with the JSON object only.
 `;
 
-  // **Call GPT**
+  // Call GPT
   const chat = await openai.createChatCompletion({
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: 'You are an expert scoring engine.' },
-      {
-        role: 'user',
+      { role: 'user',
         content:
           prompt +
           '\n\nADV Part 1:\n' +
@@ -68,20 +81,20 @@ Instructions:
     temperature: 0
   });
 
-  // Grab the raw string and log it
+  // Debug: grab raw response
   const aiRaw = chat.data.choices[0].message.content;
   console.log('GPT raw response:', aiRaw);
 
-  // Try to parse it as JSON
+  // Try parse
   let scores;
   try {
     scores = JSON.parse(aiRaw);
   } catch (e) {
     console.error('JSON parse error:', e);
-    return res
-      .status(500)
-      .json({ error: 'Invalid JSON from GPT', raw: aiRaw });
+    res.status(500).json({ error: 'Invalid JSON from GPT', raw: aiRaw });
+    return;
   }
 
-  // Return both raw + parsed for Airtable to inspect
-  return res.status(200).json({ recordId, raw: aiRaw, scores });
+  // Return both raw + parsed
+  res.status(200).json({ recordId, raw: aiRaw, scores });
+};
