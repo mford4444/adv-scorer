@@ -1,12 +1,12 @@
-const fetch = require('node-fetch');
-const pdfParse = require('pdf-parse');
-const { Configuration, OpenAIApi } = require('openai');
+import fetch from 'node-fetch';
+import pdfParse from 'pdf-parse';
+import { OpenAI } from 'openai';
 
-const openai = new OpenAIApi(new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
-}));
+});
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Download and parse PDFs
+  // Fetch PDF text
   async function fetchPdfText(url) {
     const arrayBuffer = await fetch(url).then(r => r.arrayBuffer());
     return (await pdfParse(Buffer.from(arrayBuffer))).text;
@@ -52,19 +52,19 @@ Analyze both documents and output ONLY a single JSON object with these exact key
 }
 
 Instructions:
-- **Count** every regulatory/legal disclosure for “Disclosures Count.”
-- **Count** each client complaint for “Client Complaints Count.”
-- **Count** each outside business activity for “Outside Business Activities Count.”
-- **Score** the qualitative fields 1–10 per your rubric (1 = weakest, 10 = strongest).
-- **Do NOT** wrap the JSON in any extra text—respond with the JSON object only.
+- Count every regulatory/legal disclosure for “Disclosures Count.”
+- Count each client complaint for “Client Complaints Count.”
+- Count each outside business activity for “Outside Business Activities Count.”
+- Score the qualitative fields 1–10 per your rubric (1 = weakest, 10 = strongest).
+- Do NOT wrap the JSON in any extra text—respond with the JSON object only.
 `;
 
-  const chat = await openai.createChatCompletion({
-    model: 'gpt-4o',
+  const chat = await openai.chat.completions.create({
+    model: "gpt-4o",
     messages: [
-      { role: 'system', content: 'You are an expert scoring engine.' },
+      { role: "system", content: "You are an expert scoring engine." },
       {
-        role: 'user',
+        role: "user",
         content:
           prompt +
           '\n\nADV Part 1:\n' + advText +
@@ -74,17 +74,17 @@ Instructions:
     temperature: 0
   });
 
-  const aiRaw = chat.data.choices[0].message.content;
-  console.log('GPT raw response:', aiRaw);
+  const aiRaw = chat.choices[0].message.content;
+  console.log("GPT raw response:", aiRaw);
 
   let scores;
   try {
     scores = JSON.parse(aiRaw);
   } catch (e) {
-    console.error('JSON parse error:', e);
-    res.status(500).json({ error: 'Invalid JSON from GPT', raw: aiRaw });
+    console.error("JSON parse error:", e);
+    res.status(500).json({ error: "Invalid JSON from GPT", raw: aiRaw });
     return;
   }
 
   res.status(200).json({ recordId, raw: aiRaw, scores });
-};
+}
