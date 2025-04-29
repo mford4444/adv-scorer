@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import pdfParse from 'pdf-parse';
+import { default as pdfParse } from 'pdf-parse/lib/pdf-parse.js';
 import { OpenAI } from 'openai';
 
 const openai = new OpenAI({
