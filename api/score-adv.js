@@ -59,20 +59,23 @@ Instructions:
 - Do NOT wrap the JSON in any extra text—respond with the JSON object only.
 `;
 
-  const chat = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: "You are an expert scoring engine." },
-      {
-        role: "user",
-        content:
-          prompt +
-          '\n\nADV Part 1:\n' + advText +
-          '\n\nADV Part 2:\n' + part2Text
-      }
-    ],
-    temperature: 0
-  });
+// Trim text to fit TPM limits
+function trimText(text, maxChars = 12000) {
+  return text.length > maxChars ? text.slice(0, maxChars) : text;
+}
+
+const trimmedPrompt = prompt +
+  '\n\nADV Part 1:\n' + trimText(advText) +
+  '\n\nADV Part 2:\n' + trimText(part2Text);
+
+const chat = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [
+    { role: "system", content: "You are an expert scoring engine." },
+    { role: "user", content: trimmedPrompt }
+  ],
+  temperature: 0
+});
 
   const aiRaw = chat.choices[0].message.content;
   console.log("GPT raw response:", aiRaw);
