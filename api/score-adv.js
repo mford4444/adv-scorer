@@ -94,7 +94,10 @@ Instructions:
     res.status(500).json({ error: 'Invalid JSON from GPT', raw: aiRaw });
     return;
   }
-
+ // …after you parse `scores`…
+await table.updateRecordAsync(recordId, {
+  "Raw GPT Response": aiRaw,
+  
   // Return both raw + parsed
   res.status(200).json({ recordId, raw: aiRaw, scores });
 };
