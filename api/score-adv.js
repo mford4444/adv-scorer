@@ -78,16 +78,16 @@ const chat = await openai.chat.completions.create({
 });
 
   const aiRaw = chat.choices[0].message.content;
-  console.log("GPT raw response:", aiRaw);
+console.log("GPT raw response:", aiRaw);
 
-  let scores;
-  try {
-    scores = JSON.parse(aiRaw);
-  } catch (e) {
-    console.error("JSON parse error:", e);
-    res.status(500).json({ error: "Invalid JSON from GPT", raw: aiRaw });
-    return;
-  }
+let scores;
+try {
+  let cleaned = aiRaw.replace(/```json|```/g, "").trim();
+  scores = JSON.parse(cleaned);
+} catch (e) {
+  console.error("JSON parse error:", e);
+  return res.status(500).json({ error: "Invalid JSON from GPT", raw: aiRaw });
+}
 
   res.status(200).json({ recordId, raw: aiRaw, scores });
 }
