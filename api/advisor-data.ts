@@ -1,7 +1,6 @@
 // /api/advisor-data.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: any, res: any) {
   const { crd } = req.query;
 
   if (!crd || typeof crd !== 'string') {
