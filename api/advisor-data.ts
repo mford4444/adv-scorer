@@ -1,7 +1,7 @@
 // /api/advisor-data.ts
-import type { VercelRequest, VercelResponse } from 'vercel';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { crd } = req.query;
 
   if (!crd || typeof crd !== 'string') {
