@@ -1,4 +1,24 @@
-// Placeholder: Fetch FINRA profile or disclosures (mock or dummy object for now)
+// /api/advisor-data.ts
+import type { VercelRequest, VercelResponse } from 'vercel';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { crd } = req.query;
+
+  if (!crd || typeof crd !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid CRD number' });
+  }
+
+  try {
+    // Temporarily using dummy data to avoid fetch errors
+    const secJson = {
+      name: "Test Advisor",
+      firm: {
+        crd: "304390",
+        name: "Alyphyn Capital Management"
+      },
+      aum: "$50M+"
+    };
+
     const finraSummary = {
       disclosures: 0,
       licenses: ['Series 65'],
